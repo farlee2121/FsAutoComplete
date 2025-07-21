@@ -16,3 +16,6 @@ Ionide.ProjInfo.ProjectSystem
 FSharp.Analyzers.SDK
 Ionide.Analyzers
 FSharp.Analyzers.Build
+
+Microsoft.TestPlatform.ObjectModel
+Microsoft.TestPlatform.TranslationLayer
