@@ -136,6 +136,8 @@ let lspTests =
                   EmptyFileTests.tests createServer
                   CallHierarchy.tests createServer
                   diagnosticsTest createServer
+
+                  TestExplorer.tests createServer
                   ] ] ]
 
 /// Tests that do not require a LSP server
