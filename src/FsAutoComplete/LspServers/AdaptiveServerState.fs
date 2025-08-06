@@ -2587,8 +2587,8 @@ type AdaptiveState
         lspClient.NotifyTestDiscoveryUpdate({ Tests = tests |> tryTestCasesToDTOs |> Array.ofList})
         |> Async.RunSynchronously
 
-      let testCases =
-        TestServer.VSTestWrapper.discoverTests vstestBinary.FullName incrementalUpdateHandler testProjectBinaries
+      let! testCases =
+        TestServer.VSTestWrapper.discoverTestsAsync vstestBinary.FullName incrementalUpdateHandler testProjectBinaries
 
       let testDTOs : TestServer.TestItem list = 
         testCases |> tryTestCasesToDTOs
@@ -2622,9 +2622,8 @@ type AdaptiveState
         | TestServer.VSTestWrapper.TestRunUpdate.AttachDebugProcess processId ->
           () // TODO: 
 
-
       let! testResults =
-        TestServer.VSTestWrapper.runTestsAsync vstestBinary.FullName incrementalUpdateHandler testProjectBinaries testCaseFilter attachDebugger
+        TestServer.VSTestWrapper.runTestsAsync vstestBinary.FullName incrementalUpdateHandler testProjectBinaries testCaseFilter false
 
       let resultDtos = testResults |> tryTestResultsToDTOs
       return resultDtos
