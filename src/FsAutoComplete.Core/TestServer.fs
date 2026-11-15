@@ -484,7 +484,7 @@ module TestProject =
   /// The platform that will run a project's tests, or `None` for a project carrying none.
   /// A project opts into Microsoft.Testing.Platform through an MSBuild property alone, so it
   /// need not reference the VSTest packages; every other test project runs under VSTest.
-  let classify (project: Ionide.ProjInfo.Types.ProjectOptions) : TestPlatformKind option =
+  let classifyTestPlatform (project: Ionide.ProjInfo.Types.ProjectOptions) : TestPlatformKind option =
     if optsIntoTestingPlatform project then
       Some TestPlatformKind.Mtp
     elif hasVsTestPackages project then
@@ -495,8 +495,11 @@ module TestProject =
   /// The platform a project's tests will actually be run on. With Microsoft.Testing.Platform
   /// disabled, a project that opts into it falls back to VSTest where it references the VSTest
   /// packages, and is otherwise unreachable.
-  let platformFor (mtpEnabled: bool) (project: Ionide.ProjInfo.Types.ProjectOptions) : TestPlatformKind option =
-    match classify project with
+  let getNewestRunnablePlatform
+    (mtpEnabled: bool)
+    (project: Ionide.ProjInfo.Types.ProjectOptions)
+    : TestPlatformKind option =
+    match classifyTestPlatform project with
     | Some TestPlatformKind.Mtp when not mtpEnabled ->
       if hasVsTestPackages project then
         Some TestPlatformKind.VSTest

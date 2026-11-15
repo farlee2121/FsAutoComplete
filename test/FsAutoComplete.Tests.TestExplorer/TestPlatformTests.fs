@@ -76,13 +76,13 @@ let tests =
     [
       testCase "a project without tests has no platform"
       <| fun _ ->
-        let actual = TestProject.classify emptyProject
+        let actual = TestProject.classifyTestPlatform emptyProject
 
         Expect.isNone actual "a library is not a test project"
 
       testCase "the VSTest packages alone select VSTest"
       <| fun _ ->
-        let actual = emptyProject |> vsTestPackages |> TestProject.classify
+        let actual = emptyProject |> vsTestPackages |> TestProject.classifyTestPlatform
 
         Expect.equal actual (Some TestPlatformKind.VSTest) "the test SDK runs under VSTest"
 
@@ -92,7 +92,7 @@ let tests =
           emptyProject
           |> vsTestPackages
           |> withProperty "IsTestingPlatformApplication" "true"
-          |> TestProject.classify
+          |> TestProject.classifyTestPlatform
 
         Expect.equal actual (Some TestPlatformKind.Mtp) "the property overrides the packages"
 
@@ -101,7 +101,7 @@ let tests =
         let actual =
           emptyProject
           |> withProperty "IsTestingPlatformApplication" "true"
-          |> TestProject.classify
+          |> TestProject.classifyTestPlatform
 
         Expect.equal actual (Some TestPlatformKind.Mtp) "a pure MTP application carries the property alone"
 
@@ -111,7 +111,7 @@ let tests =
           emptyProject
           |> vsTestPackages
           |> withProperty "IsTestingPlatformApplication" "false"
-          |> TestProject.classify
+          |> TestProject.classifyTestPlatform
 
         Expect.equal actual (Some TestPlatformKind.VSTest) "an opted-out project runs under VSTest"
 
@@ -121,7 +121,7 @@ let tests =
           emptyProject
           |> vsTestPackages
           |> withProperty "IsTestingPlatformApplication" ""
-          |> TestProject.classify
+          |> TestProject.classifyTestPlatform
 
         Expect.equal actual (Some TestPlatformKind.VSTest) "an ambiguous project runs under VSTest"
 
@@ -135,8 +135,8 @@ let tests =
 
 [<Tests>]
 let platformSelectionTests =
-  let mtpDisabled = TestProject.platformFor false
-  let mtpEnabled = TestProject.platformFor true
+  let mtpDisabled = TestProject.getNewestRunnablePlatform false
+  let mtpEnabled = TestProject.getNewestRunnablePlatform true
 
   testList
     "TestProject.platformFor"

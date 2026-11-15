@@ -165,7 +165,8 @@ type FindFirstProject() =
 module TestProjectHelpers =
   /// A project whose tests one of the configured platforms can discover and run.
   let isRunnableTestProject (mtpEnabled: bool) (project: Types.ProjectOptions) =
-    TestServer.TestProject.platformFor mtpEnabled project |> Option.isSome
+    TestServer.TestProject.getNewestRunnablePlatform mtpEnabled project
+    |> Option.isSome
 
 /// The FCS file system is process-wide. Every AdaptiveState adds the files it has open to it, newest state first,
 /// and removes them again when it is disposed, so a disposed state is neither kept alive nor read from.
@@ -2979,7 +2980,7 @@ type AdaptiveState
         let projectsRunOn kind =
           testProjects
           |> List.filter (fun project ->
-            TestServer.TestProject.platformFor state.Config.EnableTestingPlatform project = Some kind)
+            TestServer.TestProject.getNewestRunnablePlatform state.Config.EnableTestingPlatform project = Some kind)
 
         let vsTestProjects = projectsRunOn TestServer.TestPlatformKind.VSTest
         let mtpProjects = projectsRunOn TestServer.TestPlatformKind.Mtp
@@ -3108,7 +3109,7 @@ type AdaptiveState
       let! projects = projectOptions |> AsyncAVal.forceAsync
 
       let platformOf =
-        TestServer.TestProject.platformFor state.Config.EnableTestingPlatform
+        TestServer.TestProject.getNewestRunnablePlatform state.Config.EnableTestingPlatform
 
       let testProjects =
         projects.ToValueList()
