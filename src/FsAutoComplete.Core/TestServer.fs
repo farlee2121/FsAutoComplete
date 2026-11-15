@@ -277,23 +277,24 @@ module TestItem =
   [<Literal>]
   let mtpExecutorUri = "microsoft.testing.platform"
 
-  /// The type the platform names as holding a test, qualified by its namespace.
-  let private mtpTypeName (node: FsAutoComplete.TestingPlatform.Client.TestNodeUpdate) =
-    node.MethodIdentifier
-    |> Option.map (fun identifier ->
-      match identifier.Namespace with
-      | Some ns when not (String.IsNullOrEmpty ns) -> $"{ns}.{identifier.TypeName}"
-      | _ -> identifier.TypeName)
+  module TestNodeUpdate =
+    /// The type the platform names as holding a test, qualified by its namespace.
+    let tryGetTypeName (node: FsAutoComplete.TestingPlatform.Client.TestNodeUpdate) =
+      node.MethodIdentifier
+      |> Option.map (fun identifier ->
+        match identifier.Namespace with
+        | Some ns when not (String.IsNullOrEmpty ns) -> $"{ns}.{identifier.TypeName}"
+        | _ -> identifier.TypeName)
 
-  let private mtpParentUid (node: FsAutoComplete.TestingPlatform.Client.TestNodeUpdate) =
-    node.ParentUid |> Option.filter (String.IsNullOrEmpty >> not)
+    let nonEmptyParentUid (node: FsAutoComplete.TestingPlatform.Client.TestNodeUpdate) =
+      node.ParentUid |> Option.filter (String.IsNullOrEmpty >> not)
 
-  /// The type a node is grouped under: the one the platform names for it, unless the platform
-  /// gave the node a parent of its own.
-  let mtpTypeGrouping (node: FsAutoComplete.TestingPlatform.Client.TestNodeUpdate) =
-    match mtpParentUid node with
-    | Some _ -> None
-    | None -> mtpTypeName node
+    /// The type a node is grouped under: the one the platform names for it, unless the platform
+    /// gave the node a parent of its own.
+    let mtpTypeGrouping (node: FsAutoComplete.TestingPlatform.Client.TestNodeUpdate) =
+      match nonEmptyParentUid node with
+      | Some _ -> None
+      | None -> tryGetTypeName node
 
   /// Maps a node, linking a parent the platform reported through the given lookup.
   let ofMtpNodeWithParent
@@ -318,7 +319,7 @@ module TestItem =
     // MSTest displays a test by its method name alone, where xUnit displays the name of its type
     // too, so a display name is qualified by the test's type unless it already is.
     let fullName =
-      match mtpTypeName node with
+      match TestNodeUpdate.tryGetTypeName node with
       | Some typeName ->
         if displayName.StartsWith($"{typeName}.", StringComparison.Ordinal) then
           displayName
@@ -329,9 +330,11 @@ module TestItem =
     {
       Id = TestId.ofMtpNode projFilePath targetFramework node
       ParentId =
-        match mtpParentUid node with
+        match TestNodeUpdate.nonEmptyParentUid node with
         | Some parentUid -> Some(parentIdOf parentUid)
-        | None -> mtpTypeGrouping node |> Option.map (TestId.group projFilePath targetFramework)
+        | None ->
+          TestNodeUpdate.mtpTypeGrouping node
+          |> Option.map (TestId.group projFilePath targetFramework)
       IsLeaf = isLeaf
       FullName = fullName
       DisplayName = displayName
@@ -388,15 +391,23 @@ module TestHierarchy =
   /// The ancestor names of a fully-qualified test name, outermost first.
   let private ancestorNames (fullName: string) = namesDownTo fullName |> List.filter (fun name -> name <> fullName)
 
-  let private groupingNode (template: TestItem) (fullName: string) =
-    { template with
-        Id = TestId.group template.ProjectFilePath template.TargetFramework fullName
-        ParentId = None
-        IsLeaf = false
-        FullName = fullName
-        DisplayName = (splitSegments fullName |> List.last).Text
-        CodeFilePath = None
-        CodeLocationRange = None
+  let private groupingNode
+    (projectFilePath: string)
+    (targetFramework: string)
+    (executorUri: string)
+    (fullName: string)
+    =
+    {
+      Id = TestId.group projectFilePath targetFramework fullName
+      ParentId = None
+      IsLeaf = false
+      FullName = fullName
+      DisplayName = (splitSegments fullName |> List.last).Text
+      CodeFilePath = None
+      CodeLocationRange = None
+      ExecutorUri = executorUri
+      ProjectFilePath = projectFilePath
+      TargetFramework = targetFramework
     }
 
   /// Returns the given tests plus a grouping node per name segment they share, each node
@@ -410,7 +421,9 @@ module TestHierarchy =
 
     let groupings =
       tests
-      |> List.collect (fun leaf -> ancestorNames leaf.FullName |> List.map (groupingNode leaf))
+      |> List.collect (fun leaf ->
+        ancestorNames leaf.FullName
+        |> List.map (groupingNode leaf.ProjectFilePath leaf.TargetFramework leaf.ExecutorUri))
 
     tests @ groupings
     |> List.distinctBy _.Id
@@ -432,26 +445,17 @@ module TestHierarchy =
       | Some parent -> TestId.ofMtpNode projFilePath targetFramework parent
       | None -> TestId.group projFilePath targetFramework uid
 
-    let items =
+    let itemsFromExplicitNodes =
       nodes
       |> List.map (TestItem.ofMtpNodeWithParent parentIdOf projFilePath targetFramework)
 
-    let typeGroupings =
-      List.zip nodes items
-      |> List.collect (fun (node, item) ->
-        match TestItem.mtpTypeGrouping node with
-        | Some typeName -> namesDownTo typeName |> List.map (groupingNode item)
-        | None -> [])
-      |> List.distinctBy _.Id
-      |> List.map (fun grouping ->
-        { grouping with
-            ParentId =
-              ancestorNames grouping.FullName
-              |> List.tryLast
-              |> Option.map (TestId.group projFilePath targetFramework)
-        })
+    let groupsInferredFromTypeInfo =
+      nodes
+      |> List.choose TestItem.TestNodeUpdate.mtpTypeGrouping
+      |> List.map (groupingNode projFilePath targetFramework TestItem.mtpExecutorUri)
+      |> withInferredGroupings
 
-    items @ typeGroupings
+    itemsFromExplicitNodes @ groupsInferredFromTypeInfo
 
 [<RequireQualifiedAccess>]
 type TestPlatformKind =
