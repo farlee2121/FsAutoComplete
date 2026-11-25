@@ -157,7 +157,7 @@ let mtpNodeTests =
                 NodeType = Some NodeType.Action
             }
 
-        Expect.isTrue actual.IsLeaf "an action is a test"
+        Expect.isTrue actual.IsRunnable "an action is a test"
 
       testCase "a group node is not runnable"
       <| fun _ ->
@@ -167,7 +167,7 @@ let mtpNodeTests =
                 NodeType = Some NodeType.Group
             }
 
-        Expect.isFalse actual.IsLeaf "a group holds tests"
+        Expect.isFalse actual.IsRunnable "a group holds tests"
 
       testCase "a node of unreported type is runnable"
       <| fun _ ->
@@ -177,7 +177,7 @@ let mtpNodeTests =
                 NodeType = None
             }
 
-        Expect.isTrue actual.IsLeaf "only a group is excluded from running"
+        Expect.isTrue actual.IsRunnable "only a group is excluded from running"
 
       testCase "the display name falls back to the uid"
       <| fun _ ->
@@ -426,7 +426,7 @@ let mtpHierarchyTests =
     |> List.tryFind (fun p -> Some p.Id = item.ParentId)
     |> Option.map _.FullName
 
-  let groupNames (items: TestItem list) = items |> List.filter (_.IsLeaf >> not) |> List.map _.FullName |> List.sort
+  let groupNames (items: TestItem list) = items |> List.filter (_.IsRunnable >> not) |> List.map _.FullName |> List.sort
 
   testList
     "TestHierarchy.ofMtpNodes"
@@ -445,7 +445,7 @@ let mtpHierarchyTests =
               }
             ]
 
-        let child = actual |> List.find _.IsLeaf
+        let child = actual |> List.find _.IsRunnable
 
         Expect.equal (parentNameOf actual child) (Some "Any.Name+At all") "the reported parent is the parent"
         Expect.equal (List.length actual) 2 "a tree the platform linked itself gains no groupings"
@@ -462,7 +462,7 @@ let mtpHierarchyTests =
 
         Expect.equal
           (actual
-           |> List.filter _.IsLeaf
+           |> List.filter _.IsRunnable
            |> List.map (fun t -> t.DisplayName, parentNameOf actual t))
           [
             "Test1", Some "MyNamespace.ClassA"
@@ -488,7 +488,7 @@ let mtpHierarchyTests =
         Expect.equal (groupNames actual) [ "XUnitTests" ] "only the type is a group"
 
         Expect.equal
-          (actual |> List.filter _.IsLeaf |> List.map (parentNameOf actual))
+          (actual |> List.filter _.IsRunnable |> List.map (parentNameOf actual))
           [ Some "XUnitTests"; Some "XUnitTests" ]
           "the separators in a test's name do not nest it"
 
@@ -512,7 +512,8 @@ let mtpHierarchyTests =
 
       testCase "a type group addresses no test"
       <| fun _ ->
-        let group = tree [ test "a3f9" None "Tests" "Adds" ] |> List.find (_.IsLeaf >> not)
+        let group =
+          tree [ test "a3f9" None "Tests" "Adds" ] |> List.find (_.IsRunnable >> not)
 
         Expect.equal
           (TestId.tryParse group.Id |> Result.map _.Target)
@@ -534,7 +535,7 @@ let mtpHierarchyTests =
       testCase "a test reported while running hangs off the same type as when discovered"
       <| fun _ ->
         let reported = test "a3f9" (Some "MyNamespace") "ClassA" "Test1"
-        let discovered = tree [ reported ] |> List.find _.IsLeaf
+        let discovered = tree [ reported ] |> List.find _.IsRunnable
 
         Expect.equal (TestItem.ofMtpNode project framework reported) discovered "a run update matches discovery"
     ]

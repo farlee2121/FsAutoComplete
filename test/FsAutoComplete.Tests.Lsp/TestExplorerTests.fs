@@ -232,7 +232,7 @@ let tests createServer =
             let actual =
               res
               |> TestDiscoveryResult.tryUnwrapTestDiscoveryResult
-              |> List.filter _.IsLeaf
+              |> List.filter _.IsRunnable
               |> List.map _.FullName
 
             Expect.equal (set actual) (set expected) ""
@@ -251,7 +251,7 @@ let tests createServer =
 
             let nested =
               discovered
-              |> List.find (fun t -> t.FullName = "Tests+Nested.Test 1" && t.IsLeaf)
+              |> List.find (fun t -> t.FullName = "Tests+Nested.Test 1" && t.IsRunnable)
 
             let parent =
               discovered
@@ -259,7 +259,7 @@ let tests createServer =
               |> Option.defaultWith (fun () -> failwith "the nested test's parent was not discovered")
 
             Expect.equal parent.FullName "Tests+Nested" "the parent is the enclosing nested type"
-            Expect.isFalse parent.IsLeaf "a grouping node is not runnable"
+            Expect.isFalse parent.IsRunnable "a grouping node is not runnable"
           }
         ]
       testList
@@ -300,7 +300,7 @@ let tests createServer =
             let actual =
               res
               |> TestDiscoveryResult.tryUnwrapTestDiscoveryResult
-              |> List.filter _.IsLeaf
+              |> List.filter _.IsRunnable
               |> List.map _.FullName
 
             Expect.contains
@@ -501,7 +501,7 @@ let tests createServer =
             let selected =
               discovery
               |> TestDiscoveryResult.tryUnwrapTestDiscoveryResult
-              |> List.find (fun test -> test.IsLeaf && test.FullName = "Tests.My test")
+              |> List.find (fun test -> test.IsRunnable && test.FullName = "Tests.My test")
 
             let runRequest: TestRunRequest =
               {
@@ -652,7 +652,7 @@ let tests createServer =
                discovery
                |> TestDiscoveryResult.tryUnwrapTestDiscoveryResult
                |> List.find (fun test ->
-                 test.IsLeaf
+                 test.IsRunnable
                  && test.FullName = fullName
                  && MixedWorkspace.isFrom project test.ProjectFilePath)
            }
@@ -690,7 +690,7 @@ let tests createServer =
 
              let leafNames items =
                items
-               |> List.filter (fun (item: FsAutoComplete.TestServer.TestItem) -> item.IsLeaf)
+               |> List.filter (fun (item: FsAutoComplete.TestServer.TestItem) -> item.IsRunnable)
                |> List.map _.FullName
                |> List.sort
 
@@ -722,7 +722,7 @@ let tests createServer =
              // An id routes its test to the project, framework and platform that run it.
              let misrouted =
                discovered
-               |> List.filter _.IsLeaf
+               |> List.filter _.IsRunnable
                |> List.filter (fun item ->
                  match FsAutoComplete.TestServer.TestId.tryParse item.Id with
                  | Ok parsed ->
@@ -1079,15 +1079,15 @@ let tests createServer =
              let vsTest =
                discovered
                |> List.find (fun test ->
-                 test.IsLeaf
+                 test.IsRunnable
                  && MixedWorkspace.isFrom MixedWorkspace.vsTestProject test.ProjectFilePath)
 
-             let grouping = discovered |> List.find (fun test -> not test.IsLeaf)
+             let grouping = discovered |> List.find (fun test -> not test.IsRunnable)
 
              let mtp =
                discovered
                |> List.find (fun test ->
-                 test.IsLeaf
+                 test.IsRunnable
                  && MixedWorkspace.isFrom MixedWorkspace.mtpProject test.ProjectFilePath)
 
              let vsTestKindForMtpProject =
@@ -1198,7 +1198,7 @@ let tests createServer =
              let discovered = TestDiscoveryResult.tryUnwrapTestDiscoveryResult res
 
              Expect.equal
-               (discovered |> List.filter _.IsLeaf |> List.map _.FullName)
+               (discovered |> List.filter _.IsRunnable |> List.map _.FullName)
                [ "Tests.My test" ]
                "VSTest's test is still discovered"
 
@@ -1274,7 +1274,7 @@ let tests createServer =
             let rows =
               discovery
               |> TestDiscoveryResult.tryUnwrapTestDiscoveryResult
-              |> List.filter (fun test -> test.IsLeaf && test.FullName.StartsWith "Tests.Row two fails")
+              |> List.filter (fun test -> test.IsRunnable && test.FullName.StartsWith "Tests.Row two fails")
 
             Expect.hasLength rows 3 "each row of the theory is its own test"
             let rowTwo = rows |> List.find (fun test -> test.FullName.Contains "x: 2")
@@ -1312,7 +1312,7 @@ let tests createServer =
               discovery
               |> TestDiscoveryResult.tryUnwrapTestDiscoveryResult
               |> List.find (fun test ->
-                test.IsLeaf
+                test.IsRunnable
                 && test.FullName.StartsWith "Tests.Row two fails"
                 && test.FullName.Contains "x: 2")
 

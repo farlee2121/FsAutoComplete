@@ -72,7 +72,7 @@ let parameterisedCaseTests =
 
         let actual =
           TestHierarchy.withInferredGroupings [ case "(a: 1)"; case "(a: 2)" ]
-          |> List.filter _.IsLeaf
+          |> List.filter _.IsRunnable
 
         Expect.hasLength actual 2 "both theory cases survive"
     ]
@@ -88,7 +88,7 @@ let tests =
 
         Expect.hasLength actual 1 "the leaf is the whole tree"
         Expect.isNone actual.Head.ParentId "an unsegmented name is rooted"
-        Expect.isTrue actual.Head.IsLeaf "the node is runnable"
+        Expect.isTrue actual.Head.IsRunnable "the node is runnable"
 
       testCase "leaves sharing a prefix gain one grouping node"
       <| fun _ ->
@@ -104,7 +104,7 @@ let tests =
 
         let grouping = actual |> List.find (fun i -> i.FullName = "Tests")
 
-        Expect.isFalse grouping.IsLeaf "a grouping node has no test to run"
+        Expect.isFalse grouping.IsRunnable "a grouping node has no test to run"
 
       testCase "a leaf points at its grouping node"
       <| fun _ ->
@@ -143,7 +143,8 @@ let tests =
           TestItem.ofVsTestCase "/repo/Tests.fsproj" "net8.0" testCase
 
         let actual =
-          TestHierarchy.withInferredGroupings [ case (); case () ] |> List.filter _.IsLeaf
+          TestHierarchy.withInferredGroupings [ case (); case () ]
+          |> List.filter _.IsRunnable
 
         Expect.hasLength actual 2 "the adapter's case ids tell the cases apart"
 
@@ -154,7 +155,7 @@ let tests =
 
         let named fullName isLeaf =
           actual
-          |> List.filter (fun i -> i.FullName = fullName && i.IsLeaf = isLeaf)
+          |> List.filter (fun i -> i.FullName = fullName && i.IsRunnable = isLeaf)
           |> List.exactlyOne
 
         let test = named "Tests.A" true

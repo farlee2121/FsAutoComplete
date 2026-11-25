@@ -50,7 +50,7 @@ let tests =
         let tree =
           TestHierarchy.ofMtpNodes "/repo/Mtp.XUnit.fsproj" "net8.0" (List.map snd discovered)
 
-        let groups = tree |> List.filter (_.IsLeaf >> not)
+        let groups = tree |> List.filter (_.IsRunnable >> not)
 
         let separated =
           tree
@@ -60,7 +60,7 @@ let tests =
         Expect.equal separated.ParentId (Some groups.Head.Id) "separators in a test's name do not nest it"
 
         Expect.all
-          (tree |> List.filter _.IsLeaf)
+          (tree |> List.filter _.IsRunnable)
           (fun leaf -> leaf.ParentId = Some groups.Head.Id)
           "every test hangs off its type"
       }

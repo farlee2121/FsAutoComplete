@@ -12,7 +12,7 @@ type TestItem =
     /// The `Id` of the node one level up, or `None` at the root of a project.
     ParentId: string option
     /// A runnable test. `false` marks a grouping node.
-    IsLeaf: bool
+    IsRunnable: bool
     FullName: string
     DisplayName: string
     /// Identifies the test adapter that ran the tests
@@ -257,7 +257,7 @@ module TestItem =
     {
       Id = TestId.ofVsTestCase projFilePath targetFramework testCase
       ParentId = None
-      IsLeaf = true
+      IsRunnable = true
       FullName = fullName
       DisplayName = testCase.DisplayName
       ExecutorUri = testCase.ExecutorUri |> string
@@ -311,7 +311,7 @@ module TestItem =
           EndLine = location.LineEnd |> Option.defaultValue startLine
         })
 
-    let isLeaf =
+    let isRunnable =
       node.NodeType <> Some FsAutoComplete.TestingPlatform.Client.NodeType.Group
 
     let displayName = node.DisplayName |> Option.defaultValue node.Uid
@@ -335,7 +335,7 @@ module TestItem =
         | None ->
           TestNodeUpdate.mtpTypeGrouping node
           |> Option.map (TestId.group projFilePath targetFramework)
-      IsLeaf = isLeaf
+      IsRunnable = isRunnable
       FullName = fullName
       DisplayName = displayName
       ExecutorUri = mtpExecutorUri
@@ -400,7 +400,7 @@ module TestHierarchy =
     {
       Id = TestId.group projectFilePath targetFramework fullName
       ParentId = None
-      IsLeaf = false
+      IsRunnable = false
       FullName = fullName
       DisplayName = (splitSegments fullName |> List.last).Text
       CodeFilePath = None
